@@ -24,39 +24,20 @@
         </fieldset>
         <p>Left click for X</p>
         <p>Right click for O</p>
-        <button type="button">Reset</button>
+        <button type="button" id="reset">Reset</button>
     </div>
 
     <div class="gameboard">
-        <!-- emmet div.cell*9>h3{Project$}+p -->
-        <!-- div.cell*9>p -->
-        <div class="cell">
-            <p>X</p>
-        </div>
-        <div class="cell">
-            <p>O</p>
-        </div>
-        <div class="cell">
-            <p></p>
-        </div>
-        <div class="cell">
-            <p></p>
-        </div>
-        <div class="cell">
-            <p></p>
-        </div>
-        <div class="cell">
-            <p></p>
-        </div>
-        <div class="cell">
-            <p></p>
-        </div>
-        <div class="cell">
-            <p></p>
-        </div>
-        <div class="cell">
-            <p></p>
-        </div>
+        <!-- div.cell[data-cellnum="$"]*9 -->
+        <div class="cell" data-cellnum="1">X</div>
+        <div class="cell" data-cellnum="2">O</div>
+        <div class="cell" data-cellnum="3"></div>
+        <div class="cell" data-cellnum="4"></div>
+        <div class="cell" data-cellnum="5"></div>
+        <div class="cell" data-cellnum="6"></div>
+        <div class="cell" data-cellnum="7"></div>
+        <div class="cell" data-cellnum="8"></div>
+        <div class="cell" data-cellnum="9"></div>
     </div>
 
     <div class="footer">
