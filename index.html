@@ -11,26 +11,30 @@
 </head>
 
 <body>
+
     <div class="header">
         <h1>Tic Tac Toe</h1>
     </div>
 
     <div class="sidebar">
+        <!-- // TODO: there has to be a better way of doing this
+        // prevent empty p tag from making stuff shift on screen -->
         <p id="message">&nbsp;</p>
         <fieldset>
             <legend>Options</legend>
-            <label>Self&nbsp;&nbsp;<input type="radio" name="opt" value="self" checked></label>
+            <label><sup>*</sup>Self&nbsp;&nbsp;<input type="radio" name="opt" value="self" checked></label>
+            <label>Random&nbsp;&nbsp;<input type="radio" name="opt" value="random"></label>
             <label>CPU&nbsp;&nbsp;<input type="radio" name="opt" value="cpu"></label>
         </fieldset>
         <p>Left click for X</p>
-        <p>Right click for O</p>
+        <p><sup>*</sup>Right click for O</p>
         <button type="button" id="reset">Reset</button>
     </div>
 
     <div class="gameboard">
         <!-- div.cell[data-cellnum="$"]*9 -->
-        <div class="cell" data-cellnum="1">X</div>
-        <div class="cell" data-cellnum="2">O</div>
+        <div class="cell" data-cellnum="1"></div>
+        <div class="cell" data-cellnum="2"></div>
         <div class="cell" data-cellnum="3"></div>
         <div class="cell" data-cellnum="4"></div>
         <div class="cell" data-cellnum="5"></div>
