@@ -3,6 +3,9 @@
 // all DOM/UI access
 const displayController = (function () {
 
+    const PLAYER = 'X';
+    const AI = 'O';
+
     // cache queries
     const cells = document.querySelectorAll('.cell');
     const resetButton = document.getElementById('reset');
@@ -15,15 +18,16 @@ const displayController = (function () {
         cell.addEventListener('contextmenu', rightClick);
     });
     resetButton.addEventListener('click', resetClick);
-    options.forEach(cell => {
-        cell.addEventListener('change', optionChange);
+    options.forEach(opt => {
+        opt.addEventListener('change', optionChange);
     });
 
     function leftClick(e) {
         e.preventDefault();
         if (e.button !== 0)
             return;
-        updateCell(e.target, 'X');
+        updateCell(e.target, PLAYER);
+        playAI();
     }
 
     function rightClick(e) {
@@ -32,7 +36,7 @@ const displayController = (function () {
             return;
         if (!gameLogic.isSoloPlay())
             return;
-        updateCell(e.target, 'O');
+        updateCell(e.target, AI);
     }
 
     function updateCell(cell, value) {
@@ -50,12 +54,34 @@ const displayController = (function () {
         gameLogic.executeTurn(cell.dataset.cellnum, value);
     }
 
+    // TODO: this should be game logic, but it needs cell
+    function playAI() {
+        if (gameLogic.isSoloPlay() || gameLogic.isGameOver())
+            return;
+
+        // find empty data cells
+        const emptyCellnums = gameData.getEmptycellnums();
+        if (emptyCellnums.length === 0)
+            return;
+
+        // pick one at random and update corresponding UI cell
+        const index = getRandomInt(0, emptyCellnums.length);
+        const cellnum = emptyCellnums[index];
+        updateCell(getCell(cellnum), AI);
+    }
+
+    function getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
+    }
+
     function resetClick(e) {
         gameLogic.reset();
     }
 
     function optionChange(e) {
-        gameLogic.changeOption(e.target.value);
+        gameLogic.setGameType(e.target.value);
     }
 
     function getGameType() {
@@ -72,6 +98,18 @@ const displayController = (function () {
         });
     }
 
+    function getCell(cellnum) {
+        let ret = null;
+        
+        cells.forEach(cell => {
+            if (cell.dataset.cellnum == cellnum)
+                ret = cell;
+        });
+
+        return ret;
+    }
+
+
     function setMessage(msg) {
         // TODO: there has to be a better way of doing this
         // prevent empty p tag from making stuff shift on screen
@@ -81,7 +119,6 @@ const displayController = (function () {
         }
         message.innerText = msg;
     }
-
 
     return {
         setMessage,
@@ -113,7 +150,7 @@ const gameLogic = (function () {
             return;
         }
 
-        if (gameData.isTie()) {
+        if (gameData.isFull()) {
             isGameOverFlag = true;
             displayController.setMessage(`Tie`);
             return;
@@ -162,6 +199,18 @@ const gameData = (function () {
         return data[cellnum - 1];
     }
 
+    function getEmptycellnums() {
+        const result = [];
+
+        data.forEach((element, index) => {
+            if (element === null)
+                result.push(index + 1);
+        });
+
+        return result;
+    }
+
+
     // TODO: a bunch of bad code
     // i have dualing concepts, started with UI as a list of cells, then game logic as a grid, 
     // should have a better wraper for the data
@@ -176,9 +225,7 @@ const gameData = (function () {
         return isSomethingFull;
     }
 
-    // order dependent, not ideal, but hasWinner() gets called first so it works
-    // if the last move was a win, nothing would be null, so this would return true
-    function isTie() {
+    function isFull() {
         for (let i = 0; i < data.length; i++)
             if (data[i] === null)
                 return false;
@@ -214,7 +261,8 @@ const gameData = (function () {
         setCell,
         getCell,
         hasWinner,
-        isTie
+        isFull,
+        getEmptycellnums
     }
 })();
 
