@@ -1,7 +1,7 @@
 'use strict';
 
-
-const domStuff = (function () {
+// all DOM/UI access
+const displayController = (function () {
 
     // cache queries
     const cells = document.querySelectorAll('.cell');
@@ -20,27 +20,42 @@ const domStuff = (function () {
     });
 
     function leftClick(e) {
+        e.preventDefault();
         if (e.button !== 0)
             return;
-        e.preventDefault();
-        displayController.setCell(e.target, 'X');
+        updateCell(e.target, 'X');
     }
 
     function rightClick(e) {
+        e.preventDefault();
         if (e.button !== 2)
             return;
-        if (!displayController.isSoloPlay())
+        if (!gameLogic.isSoloPlay())
             return;
-        e.preventDefault();
-        displayController.setCell(e.target, 'O');
+        updateCell(e.target, 'O');
+    }
+
+    function updateCell(cell, value) {
+        // prevent overwrite cell
+        if (cell.innerText)
+            return;
+
+        // game over, make them reset
+        if (gameLogic.isGameOver()) {
+            alert('Reset to play again');
+            return;
+        }
+
+        cell.innerText = value;
+        gameLogic.executeTurn(cell.dataset.cellnum, value);
     }
 
     function resetClick(e) {
-        displayController.reset();
+        gameLogic.reset();
     }
 
     function optionChange(e) {
-        displayController.changeOption(e.target);
+        gameLogic.changeOption(e.target.value);
     }
 
     function getGameType() {
@@ -51,23 +66,9 @@ const domStuff = (function () {
         return null;
     }
 
-    return {
-        cells,
-        message,
-        getGameType
-    }
-})();
-
-
-const displayController = (function () {
-
-    // read default from screen on load
-    let gameType = domStuff.getGameType();
-    let isGameOver = false;
-
     function renderBoard() {
-        domStuff.cells.forEach(cell => {
-            cell.innerText = gameBoard.getCell(cell.dataset.cellnum);
+        cells.forEach(cell => {
+            cell.innerText = gameData.getCell(cell.dataset.cellnum);
         });
     }
 
@@ -75,47 +76,52 @@ const displayController = (function () {
         // TODO: there has to be a better way of doing this
         // prevent empty p tag from making stuff shift on screen
         if (!msg) {
-            domStuff.message.innerHTML = '&nbsp;';
+            message.innerHTML = '&nbsp;';
             return;
         }
-        domStuff.message.innerText = msg;
+        message.innerText = msg;
     }
+
+
+    return {
+        setMessage,
+        getGameType,
+        renderBoard
+    }
+})();
+
+const gameLogic = (function () {
+
+    // read default from screen on load
+    let gameType = displayController.getGameType();
+    let isGameOverFlag = false;
 
     function reset() {
-        isGameOver = false
-        gameBoard.clear();
-        setMessage('');
-        renderBoard();
+        isGameOverFlag = false
+        gameData.clear();
+        displayController.setMessage('');
+        displayController.renderBoard();
     }
 
-    function setCell(cell, value) {
-        // prevent overwrite cell
-        if (cell.innerText)
-            return;
+    function executeTurn(cellnum, value) {
 
-        // game over, make them reset
-        if (isGameOver) {
-            alert('Reset to play again');
+        gameData.setCell(cellnum, value);
+
+        if (gameData.hasWinner()) {
+            isGameOverFlag = true;
+            displayController.setMessage(`${value} Wins!`);
             return;
         }
 
-        cell.innerText = value;
-        gameBoard.setCell(cell.dataset.cellnum, value);
-        // TODO: more stupid looking code, maybe i will fix it, maybe i will not care and move on to better backend stuff
-        if (gameBoard.hasWinner()) {
-            isGameOver = true;
-            setMessage(`${value} Wins!`);
-            return;
-        }
-        if (gameBoard.isTie()) {
-            isGameOver = true;
-            setMessage(`Tie`);
+        if (gameData.isTie()) {
+            isGameOverFlag = true;
+            displayController.setMessage(`Tie`);
             return;
         }
     }
 
-    function changeOption(opt) {
-        gameType = opt.value;
+    function setGameType(value) {
+        gameType = value;
         reset();
     }
 
@@ -123,18 +129,20 @@ const displayController = (function () {
         return (gameType === 'self');
     }
 
+    function isGameOver() {
+        return isGameOverFlag;
+    }
+
     return {
-        renderBoard,
-        setCell,
-        setMessage,
+        executeTurn,
         reset,
-        changeOption,
-        isSoloPlay
+        setGameType,
+        isSoloPlay,
+        isGameOver
     }
 })();
 
-
-const gameBoard = (function () {
+const gameData = (function () {
     const data = Array(9).fill(null);
 
     function dumpData() {
@@ -154,10 +162,11 @@ const gameBoard = (function () {
         return data[cellnum - 1];
     }
 
-    // TODO: could i have made this any worse?
-    // copy paste looking crap, there is probably a better way 
-    // should have an api to translate grid cordinate to array index, 
-    // but all i need is the row/col check, so first pass half ass it
+    // TODO: a bunch of bad code
+    // i have dualing concepts, started with UI as a list of cells, then game logic as a grid, 
+    // should have a better wraper for the data
+    // all the hard coded numbers for translating index to row/col
+
     function hasWinner() {
         let isSomethingFull = false;
 
@@ -167,6 +176,8 @@ const gameBoard = (function () {
         return isSomethingFull;
     }
 
+    // order dependent, not ideal, but hasWinner() gets called first so it works
+    // if the last move was a win, nothing would be null, so this would return true
     function isTie() {
         for (let i = 0; i < data.length; i++)
             if (data[i] === null)
@@ -176,7 +187,6 @@ const gameBoard = (function () {
 
     function isRowFull(row) {
         const index = (row - 1) * 3;
-
         if (data[index] == null)
             return false;
         return ((data[index] === data[index + 1]) && (data[index] === data[index + 2]));
@@ -184,13 +194,11 @@ const gameBoard = (function () {
 
     function isColFull(col) {
         const index = (col - 1);
-
         if (data[index] == null)
             return false;
         return ((data[index] === data[index + 3]) && (data[index] === data[index + 6]));
     }
 
-    // so fucking bad
     function isDiagFull() {
         if (data[0] != null)
             if ((data[0] === data[4]) && (data[0] === data[8]))
@@ -210,15 +218,3 @@ const gameBoard = (function () {
     }
 })();
 
-// the project indicats that this should be a thing
-// i don't see it, i probalby have too much shit in the other modules
-const game = (function () {
-
-    function stuff() {
-
-    }
-
-    return {
-        stuff
-    }
-})();
