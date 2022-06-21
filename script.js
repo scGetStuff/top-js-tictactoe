@@ -6,11 +6,11 @@ const displayController = (function () {
     const PLAYER = 'X';
     const AI = 'O';
 
-    // cache queries
+    // cache DOM referances
     const cells = document.querySelectorAll('.cell');
     const resetButton = document.getElementById('reset');
     const message = document.getElementById('message');
-    const options = document.getElementsByName('opt');
+    const gameTypes = document.getElementsByName('gameType');
 
     // event bindings
     cells.forEach(cell => {
@@ -18,8 +18,8 @@ const displayController = (function () {
         cell.addEventListener('contextmenu', rightClick);
     });
     resetButton.addEventListener('click', resetClick);
-    options.forEach(opt => {
-        opt.addEventListener('change', optionChange);
+    gameTypes.forEach(gameType => {
+        gameType.addEventListener('change', gameTypeChange);
     });
 
     function leftClick(e) {
@@ -34,60 +34,44 @@ const displayController = (function () {
         e.preventDefault();
         if (e.button !== 2)
             return;
-        if (!gameLogic.isSoloPlay())
+        if (!gameLogic.isSolo())
             return;
         updateCell(e.target, AI);
-    }
-
-    function updateCell(cell, value) {
-        // prevent overwrite cell
-        if (cell.innerText)
-            return;
-
-        // game over, make them reset
-        if (gameLogic.isGameOver()) {
-            alert('Reset to play again');
-            return;
-        }
-
-        cell.innerText = value;
-        gameLogic.executeTurn(cell.dataset.cellnum, value);
-    }
-
-    // TODO: this should be game logic, but it needs cell
-    function playAI() {
-        if (gameLogic.isSoloPlay() || gameLogic.isGameOver())
-            return;
-
-        // find empty data cells
-        const emptyCellnums = gameData.getEmptycellnums();
-        if (emptyCellnums.length === 0)
-            return;
-
-        // pick one at random and update corresponding UI cell
-        const index = getRandomInt(0, emptyCellnums.length);
-        const cellnum = emptyCellnums[index];
-        updateCell(getCell(cellnum), AI);
-    }
-
-    function getRandomInt(min, max) {
-        min = Math.ceil(min);
-        max = Math.floor(max);
-        return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
     }
 
     function resetClick(e) {
         gameLogic.reset();
     }
 
-    function optionChange(e) {
+    function gameTypeChange(e) {
         gameLogic.setGameType(e.target.value);
     }
 
+
+    function updateCell(cell, value) {
+        if (gameLogic.isGameOver()) {
+            alert('Reset to play again');
+            return;
+        }
+
+        // prevent overwrite cell
+        if (cell.innerText)
+            return;
+
+        cell.innerText = value;
+        gameLogic.executeTurn(cell.dataset.cellnum, value);
+    }
+
+    function playAI() {
+        const cellnum = gameLogic.getAIcellnum();
+        if (cellnum !== 0)
+            updateCell(getCell(cellnum), AI);
+    }
+
     function getGameType() {
-        for (let i = 0; i < options.length; i++) {
-            if (options[i].checked)
-                return options[i].value;
+        for (let i = 0; i < gameTypes.length; i++) {
+            if (gameTypes[i].checked)
+                return gameTypes[i].value;
         }
         return null;
     }
@@ -100,7 +84,7 @@ const displayController = (function () {
 
     function getCell(cellnum) {
         let ret = null;
-        
+
         cells.forEach(cell => {
             if (cell.dataset.cellnum == cellnum)
                 ret = cell;
@@ -129,6 +113,13 @@ const displayController = (function () {
 
 const gameLogic = (function () {
 
+    // avoid hardcoded crap, have to match html values
+    const GAME_TYPES = {
+        USER: 'self',
+        STUPID: 'random',
+        SMART: 'cpu'
+    };
+
     // read default from screen on load
     let gameType = displayController.getGameType();
     let isGameOverFlag = false;
@@ -150,7 +141,7 @@ const gameLogic = (function () {
             return;
         }
 
-        if (gameData.isFull()) {
+        if (gameData.isBoardFull()) {
             isGameOverFlag = true;
             displayController.setMessage(`Tie`);
             return;
@@ -162,23 +153,65 @@ const gameLogic = (function () {
         reset();
     }
 
-    function isSoloPlay() {
-        return (gameType === 'self');
+    function isSolo() {
+        return (gameType === GAME_TYPES.USER);
+    }
+
+    function isStupid() {
+        return (gameType === GAME_TYPES.STUPID);
+    }
+
+    function isSmart() {
+        return (gameType === GAME_TYPES.SMART);
     }
 
     function isGameOver() {
         return isGameOverFlag;
     }
 
+    function getAIcellnum() {
+
+        if (isSolo() || isGameOver())
+            return 0;
+
+        // find empty data cells
+        const emptyCellnums = gameData.getEmptycellnums();
+        if (emptyCellnums.length === 0)
+            return 0;
+
+        if (isStupid()) {
+            const index = getRandomInt(0, emptyCellnums.length);
+            const cellnum = emptyCellnums[index];
+            return cellnum
+        }
+
+        if (isSmart()) {
+            // TODO: haven't looked into the AI yet
+            // https://en.wikipedia.org/wiki/Minimax
+            alert('Not smart yet');
+        }
+
+        return 0;
+    }
+
+    function getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
+    }
+
     return {
         executeTurn,
         reset,
         setGameType,
-        isSoloPlay,
-        isGameOver
+        isSolo,
+        isGameOver,
+        getAIcellnum
     }
 })();
 
+// TODO: idealy the data would be represented by a grid API, but i want to move on
+// cells are numbered 1 to 9, because in the html emmit starts at 1
 const gameData = (function () {
     const data = Array(9).fill(null);
 
@@ -210,22 +243,20 @@ const gameData = (function () {
         return result;
     }
 
-
     // TODO: a bunch of bad code
     // i have dualing concepts, started with UI as a list of cells, then game logic as a grid, 
-    // should have a better wraper for the data
     // all the hard coded numbers for translating index to row/col
-
     function hasWinner() {
         let isSomethingFull = false;
 
         isSomethingFull |= isRowFull(1) || isRowFull(2) || isRowFull(3);
         isSomethingFull |= isColFull(1) || isColFull(2) || isColFull(3);
         isSomethingFull |= isDiagFull();
+
         return isSomethingFull;
     }
 
-    function isFull() {
+    function isBoardFull() {
         for (let i = 0; i < data.length; i++)
             if (data[i] === null)
                 return false;
@@ -261,7 +292,7 @@ const gameData = (function () {
         setCell,
         getCell,
         hasWinner,
-        isFull,
+        isBoardFull,
         getEmptycellnums
     }
 })();
